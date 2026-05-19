@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \":*)"
+      "Bash(python -c \":*)",
+      "Bash(cd:*)",
+      "Bash(docker run:*)",
+      "Bash(ls /c/Users/Oscarin/Desktop/jarbis/agent/*.zip)",
+      "Bash(cp *.py build-linux/)",
+      "Bash(cp -r tools build-linux/tools)",
+      "Bash(python:*)",
+      "Bash(REGION=\"us-east-1\")",
+      "Bash(for fn:*)",
+      "Bash(do)",
+      "Bash(echo \"==> Deploying $fn...\")",
+      "Bash(aws lambda:*)",
+      "Bash(aws logs:*)"
     ]
   }
 }
