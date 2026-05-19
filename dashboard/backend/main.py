@@ -31,6 +31,6 @@ app.include_router(calendar.router,   prefix="/api/calendar",   tags=["calendar"
 app.include_router(reminders.router,  prefix="/api/reminders",  tags=["reminders"],  dependencies=[Depends(verify_token)])
 app.include_router(summary.router,    prefix="/api/summary",    tags=["summary"],    dependencies=[Depends(verify_token)])
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
