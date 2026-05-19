@@ -57,7 +57,7 @@ def run_agent(user_id: str, user_message: str) -> str:
                 if block.type != "tool_use":
                     continue
                 try:
-                    result = execute_tool(block.name, block.input)
+                    result = execute_tool(user_id, block.name, block.input)
                 except Exception as e:
                     result = f"Error al ejecutar {block.name}: {e}"
 
