@@ -30,3 +30,8 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Lambda build artifacts
+agent/build/
+agent/build-linux/
+agent/*.zip

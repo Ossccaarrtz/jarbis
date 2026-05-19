@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: jarbis-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: AWS_REGION
+        value: us-east-1
+      - key: DYNAMODB_TABLE_EXPENSES
+        value: jarbis-expenses
+      - key: DYNAMODB_TABLE_MEALS
+        value: jarbis-meals
+      - key: DYNAMODB_TABLE_REMINDERS
+        value: jarbis-reminders
+      - key: DYNAMODB_TABLE_PREFERENCES
+        value: jarbis-preferences
+      - key: GOOGLE_CALENDAR_ID
+        value: primary
+      # Secrets — set manually in Render dashboard:
+      # AWS_ACCESS_KEY_ID
+      # AWS_SECRET_ACCESS_KEY
+      # GOOGLE_CALENDAR_CREDENTIALS
+      # DASHBOARD_ACCESS_TOKEN
+      # USER_ID

@@ -79,8 +79,8 @@ def run_agent(user_id: str, user_message: str) -> str:
 
         if response.stop_reason == "end_turn":
             text = next(
-                block.text for block in response.content
-                if hasattr(block, "text")
+                (block.text for block in response.content if hasattr(block, "text")),
+                "Listo."
             )
             save_turn(user_id, user_message, text)
             return text
