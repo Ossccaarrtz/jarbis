@@ -30,11 +30,17 @@ def process_update(update: dict) -> None:
         return
 
     if not text:
+        # Voz, imagen, sticker, etc.
+        if message.get("voice") or message.get("audio"):
+            telegram.send_message(chat_id, "Por ahora solo entiendo mensajes de texto. Los mensajes de voz no están soportados aún.")
+        elif message.get("photo") or message.get("video") or message.get("document"):
+            telegram.send_message(chat_id, "Por ahora solo entiendo mensajes de texto. No puedo procesar archivos ni imágenes.")
         return
 
     user_id = str(chat_id)
     print(f"[IN]  {text}")
 
+    telegram.send_typing(chat_id)
     response = run_agent(user_id, text)
 
     print(f"[OUT] {response}")

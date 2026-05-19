@@ -33,7 +33,7 @@ def save_turn(user_id: str, user_message: str, assistant_message: str) -> None:
     """Guarda un turno completo (usuario + asistente) con TTL de 24h."""
     now = datetime.now(KST)
     ts = now.strftime("%Y-%m-%dT%H:%M:%S.%f")
-    expires_at = int((now + timedelta(hours=24)).timestamp())
+    expires_at = int((now + timedelta(hours=72)).timestamp())
 
     with _table().batch_writer() as batch:
         batch.put_item(Item={

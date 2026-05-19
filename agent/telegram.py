@@ -17,6 +17,14 @@ def send_message(chat_id: int | str, text: str) -> None:
     }, timeout=10)
 
 
+def send_typing(chat_id: int | str) -> None:
+    """Muestra el indicador 'escribiendo...' en Telegram."""
+    requests.post(_url("sendChatAction"), json={
+        "chat_id": chat_id,
+        "action": "typing",
+    }, timeout=5)
+
+
 def get_updates(offset: int | None = None) -> list[dict]:
     """Polling: obtiene updates nuevos desde Telegram."""
     params = {"timeout": 30}

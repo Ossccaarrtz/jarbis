@@ -27,6 +27,14 @@ DEFINITIONS = [
                     "type": "string",
                     "description": "Tipo de comida: desayuno, almuerzo, cena, snack",
                 },
+                "date": {
+                    "type": "string",
+                    "description": (
+                        "Fecha de la comida en formato YYYY-MM-DD. "
+                        "Úsala solo si el usuario indica una fecha distinta a hoy. "
+                        "Si no se menciona, omite este campo."
+                    ),
+                },
             },
             "required": ["description", "calories", "meal_type"],
         },
@@ -53,6 +61,40 @@ DEFINITIONS = [
             "required": ["start_date", "end_date"],
         },
     },
+    {
+        "name": "get_recent_meals",
+        "description": (
+            "Obtiene las comidas más recientes del usuario con sus IDs. "
+            "Úsala antes de eliminar una comida para identificar cuál es."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Cantidad de comidas a retornar (default 5, máximo 10)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "delete_meal",
+        "description": (
+            "Elimina una comida registrada. "
+            "Primero llama get_recent_meals para obtener el ID de la comida a eliminar."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "meal_id": {
+                    "type": "string",
+                    "description": "ID de la comida a eliminar (campo 'id' del get_recent_meals)",
+                },
+            },
+            "required": ["meal_id"],
+        },
+    },
 ]
 
 
@@ -62,6 +104,7 @@ def _log_meal(user_id: str, inputs: dict) -> str:
         description=inputs["description"],
         calories=int(inputs["calories"]),
         meal_type=inputs["meal_type"],
+        date=inputs.get("date"),
     )
     return f"Comida registrada correctamente (id: {sk})"
 
@@ -98,7 +141,19 @@ def _get_nutrition_summary(user_id: str, inputs: dict) -> str:
     }, ensure_ascii=False)
 
 
+def _get_recent_meals(user_id: str, inputs: dict) -> str:
+    items = storage.get_recent_meals(user_id, limit=min(inputs.get("limit", 5), 10))
+    return json.dumps({"meals": items, "count": len(items)}, ensure_ascii=False)
+
+
+def _delete_meal(user_id: str, inputs: dict) -> str:
+    storage.delete_meal(user_id, inputs["meal_id"])
+    return "Comida eliminada correctamente."
+
+
 HANDLERS = {
     "log_meal": _log_meal,
     "get_nutrition_summary": _get_nutrition_summary,
+    "get_recent_meals": _get_recent_meals,
+    "delete_meal": _delete_meal,
 }

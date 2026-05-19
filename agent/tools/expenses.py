@@ -31,6 +31,15 @@ DEFINITIONS = [
                     "type": "string",
                     "description": "Código ISO de la moneda (KRW, USD, MXN, EUR, etc.)",
                 },
+                "date": {
+                    "type": "string",
+                    "description": (
+                        "Fecha del gasto en formato YYYY-MM-DD. "
+                        "Úsala solo si el usuario indica una fecha distinta a hoy "
+                        "(ej: 'el 8 de mayo', 'ayer', 'la semana pasada'). "
+                        "Si no se menciona, omite este campo."
+                    ),
+                },
             },
             "required": ["amount", "category", "currency"],
         },
@@ -57,6 +66,40 @@ DEFINITIONS = [
             "required": ["start_date", "end_date"],
         },
     },
+    {
+        "name": "get_recent_expenses",
+        "description": (
+            "Obtiene los gastos más recientes del usuario con sus IDs. "
+            "Úsala antes de eliminar un gasto para identificar cuál es."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Cantidad de gastos a retornar (default 5, máximo 10)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "delete_expense",
+        "description": (
+            "Elimina un gasto específico. "
+            "Primero llama get_recent_expenses para obtener el ID del gasto a eliminar."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "expense_id": {
+                    "type": "string",
+                    "description": "ID del gasto a eliminar (campo 'id' del get_recent_expenses)",
+                },
+            },
+            "required": ["expense_id"],
+        },
+    },
 ]
 
 
@@ -67,6 +110,7 @@ def _save_expense(user_id: str, inputs: dict) -> str:
         category=inputs["category"],
         description=inputs.get("description", ""),
         currency=inputs["currency"],
+        date=inputs.get("date"),
     )
     return f"Gasto guardado correctamente (id: {sk})"
 
@@ -104,7 +148,19 @@ def _get_expense_summary(user_id: str, inputs: dict) -> str:
     }, ensure_ascii=False)
 
 
+def _get_recent_expenses(user_id: str, inputs: dict) -> str:
+    items = storage.get_recent_expenses(user_id, limit=min(inputs.get("limit", 5), 10))
+    return json.dumps({"expenses": items, "count": len(items)}, ensure_ascii=False)
+
+
+def _delete_expense(user_id: str, inputs: dict) -> str:
+    storage.delete_expense(user_id, inputs["expense_id"])
+    return "Gasto eliminado correctamente."
+
+
 HANDLERS = {
     "save_expense": _save_expense,
     "get_expense_summary": _get_expense_summary,
+    "get_recent_expenses": _get_recent_expenses,
+    "delete_expense": _delete_expense,
 }
