@@ -1,16 +1,18 @@
 from fastapi import APIRouter
-from datetime import date, timedelta
+from datetime import datetime, timezone, timedelta
 from boto3.dynamodb.conditions import Key, Attr
 from db import _table, _to_float, get_user_id
 
+KST = timezone(timedelta(hours=9))
 router = APIRouter()
 
 
 @router.get("")
 def get_summary():
     user_id = get_user_id()
-    today = date.today().isoformat()
-    month_start = date.today().replace(day=1).isoformat()
+    now_kst = datetime.now(KST)
+    today = now_kst.strftime("%Y-%m-%d")
+    month_start = now_kst.replace(day=1).strftime("%Y-%m-%d")
 
     # Today expenses
     resp_exp = _table("DYNAMODB_TABLE_EXPENSES").query(

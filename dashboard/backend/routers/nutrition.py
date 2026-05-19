@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Query
 from boto3.dynamodb.conditions import Key
 from db import _table, _to_float, get_user_id
-from datetime import date, timedelta
-from decimal import Decimal
+from datetime import datetime, timezone, timedelta
 
+KST = timezone(timedelta(hours=9))
 router = APIRouter()
+
+def _today_kst():
+    return datetime.now(KST).strftime("%Y-%m-%d")
 
 
 def _parse_meals(items: list) -> list:
@@ -28,9 +31,9 @@ def get_nutrition(
 ):
     user_id = get_user_id()
     if not start_date:
-        start_date = date.today().isoformat()
+        start_date = _today_kst()
     if not end_date:
-        end_date = date.today().isoformat()
+        end_date = _today_kst()
 
     response = _table("DYNAMODB_TABLE_MEALS").query(
         KeyConditionExpression=Key("user_id").eq(user_id) & Key("sk").between(
@@ -55,16 +58,16 @@ def get_nutrition(
 
 @router.get("/today")
 def get_today_nutrition():
-    today = date.today().isoformat()
+    today = _today_kst()
     return get_nutrition(start_date=today, end_date=today)
 
 
 @router.get("/weekly")
 def get_weekly_nutrition():
-    today = date.today()
+    today = datetime.now(KST)
     days = []
     for i in range(6, -1, -1):
-        d = (today - timedelta(days=i)).isoformat()
+        d = (today - timedelta(days=i)).strftime("%Y-%m-%d")
         resp = _table("DYNAMODB_TABLE_MEALS").query(
             KeyConditionExpression=Key("user_id").eq(get_user_id()) & Key("sk").between(
                 f"{d}T00:00:00", f"{d}T23:59:59z"
