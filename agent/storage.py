@@ -31,6 +31,7 @@ def _to_float(val):
 # Expenses
 # ---------------------------------------------------------------------------
 
+
 def put_expense(user_id: str, amount: float, category: str,
                 description: str, currency: str) -> str:
     now = _now_kst()
@@ -65,6 +66,44 @@ def query_expenses(user_id: str, start_date: str, end_date: str) -> list[dict]:
             "category": item["category"],
             "description": item.get("description", ""),
             "currency": item["currency"],
+        }
+        for item in response["Items"]
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Meals
+# ---------------------------------------------------------------------------
+
+def put_meal(user_id: str, description: str, calories: int, meal_type: str) -> str:
+    now = _now_kst()
+    sk = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}#{uuid.uuid4()}"
+
+    _table("DYNAMODB_TABLE_MEALS").put_item(Item={
+        "user_id": user_id,
+        "sk": sk,
+        "description": description,
+        "calories": calories,
+        "meal_type": meal_type.lower(),
+        "expires_at": _ttl_1year(now),
+    })
+    return sk
+
+
+def query_meals(user_id: str, start_date: str, end_date: str) -> list[dict]:
+    response = _table("DYNAMODB_TABLE_MEALS").query(
+        KeyConditionExpression=Key("user_id").eq(user_id) & Key("sk").between(
+            f"{start_date}T00:00:00",
+            f"{end_date}T23:59:59z",
+        )
+    )
+    return [
+        {
+            "date": item["sk"][:10],
+            "time": item["sk"][11:16],
+            "description": item["description"],
+            "calories": int(item["calories"]),
+            "meal_type": item["meal_type"],
         }
         for item in response["Items"]
     ]

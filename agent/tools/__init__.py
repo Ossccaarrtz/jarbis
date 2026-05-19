@@ -1,11 +1,14 @@
 from tools.expenses import DEFINITIONS as _EXPENSE_DEFS, HANDLERS as _EXPENSE_HANDLERS
+from tools.nutrition import DEFINITIONS as _NUTRITION_DEFS, HANDLERS as _NUTRITION_HANDLERS
 
 TOOLS = [
     *_EXPENSE_DEFS,
+    *_NUTRITION_DEFS,
 ]
 
 _handlers: dict = {
     **_EXPENSE_HANDLERS,
+    **_NUTRITION_HANDLERS,
 }
 
 
