@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Empaqueta y despliega ambos Lambdas.
+# Empaqueta y despliega los tres Lambdas de Jarbis.
 # Uso: bash deploy.sh
-# Requisito: AWS CLI configurado, ambas funciones Lambda ya creadas.
+# Requisito: AWS CLI configurado, funciones Lambda ya creadas.
 
 set -e
 
 HANDLER_FUNCTION="jarbis-handler"
 AGENT_FUNCTION="jarbis-agent"
+DISPATCHER_FUNCTION="jarbis-reminder-dispatcher"
 REGION="us-east-1"
 BUILD_DIR="build"
 ZIP_FILE="jarbis.zip"
@@ -37,6 +38,13 @@ aws lambda update-function-code \
 echo "==> Desplegando $AGENT_FUNCTION..."
 aws lambda update-function-code \
   --function-name "$AGENT_FUNCTION" \
+  --zip-file "fileb://$ZIP_FILE" \
+  --region "$REGION" \
+  --output text --query "FunctionName"
+
+echo "==> Desplegando $DISPATCHER_FUNCTION..."
+aws lambda update-function-code \
+  --function-name "$DISPATCHER_FUNCTION" \
   --zip-file "fileb://$ZIP_FILE" \
   --region "$REGION" \
   --output text --query "FunctionName"
