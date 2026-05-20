@@ -1,8 +1,9 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, CreditCard, Apple, CalendarDays } from "lucide-react";
+import { LayoutDashboard, CreditCard, Apple, CalendarDays, CalendarCheck } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Inicio" },
+  { to: "/daily", icon: CalendarCheck, label: "Día" },
   { to: "/expenses", icon: CreditCard, label: "Gastos" },
   { to: "/nutrition", icon: Apple, label: "Nutrición" },
   { to: "/agenda", icon: CalendarDays, label: "Agenda" },

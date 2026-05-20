@@ -17,6 +17,7 @@ A personal agentic assistant with a Telegram interface + web dashboard. Logs exp
 
 ### Web Dashboard
 - Daily summary: spend, calories, next event
+- **Day detail view**: pick any date and see that day's expenses (donut chart by category + transaction list) and meals (grouped by meal type with calories per item)
 - Monthly expenses: donut chart by category, progress vs monthly budget
 - Transaction history: today / week / month
 - Nutrition: calorie ring, meal breakdown, weekly progress
@@ -127,6 +128,7 @@ jarbis/
         │   │   └── Skeleton.jsx
         │   └── pages/
         │       ├── Home.jsx
+        │       ├── Daily.jsx       # Per-day detail: date picker + expenses donut + meal breakdown
         │       ├── Expenses.jsx
         │       ├── Nutrition.jsx
         │       ├── Agenda.jsx

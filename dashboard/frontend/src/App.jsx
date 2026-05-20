@@ -4,6 +4,7 @@ import { getToken } from "./lib/api";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
+import Daily from "./pages/Daily";
 import Expenses from "./pages/Expenses";
 import Nutrition from "./pages/Nutrition";
 import Agenda from "./pages/Agenda";
@@ -20,6 +21,7 @@ export default function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/daily" element={<Daily />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/agenda" element={<Agenda />} />
