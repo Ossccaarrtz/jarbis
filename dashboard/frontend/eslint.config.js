@@ -17,5 +17,10 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Patron valido de fetch-on-mount + refresh manual con el mismo callback.
+      // La regla es nueva (react-hooks v7) y demasiado estricta para este uso.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
   },
 ])
