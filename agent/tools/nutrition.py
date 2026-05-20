@@ -82,7 +82,8 @@ DEFINITIONS = [
         "name": "delete_meal",
         "description": (
             "Elimina una comida registrada. "
-            "Primero llama get_recent_meals para obtener el ID de la comida a eliminar."
+            "Primero llama get_recent_meals para obtener el ID. "
+            "Si necesitas eliminar VARIAS comidas, usa delete_meals_bulk."
         ),
         "input_schema": {
             "type": "object",
@@ -93,6 +94,25 @@ DEFINITIONS = [
                 },
             },
             "required": ["meal_id"],
+        },
+    },
+    {
+        "name": "delete_meals_bulk",
+        "description": (
+            "Elimina varias comidas de una sola vez y verifica cada eliminación. "
+            "Úsala cuando el usuario quiera borrar múltiples comidas. "
+            "Primero llama get_nutrition_summary o get_recent_meals para obtener los IDs."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "meal_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Lista de IDs de comidas a eliminar",
+                },
+            },
+            "required": ["meal_ids"],
         },
     },
 ]
@@ -158,9 +178,24 @@ def _delete_meal(user_id: str, inputs: dict) -> str:
     return f"ERROR: No se pudo eliminar la comida {sk[:16]}... Inténtalo de nuevo."
 
 
+def _delete_meals_bulk(user_id: str, inputs: dict) -> str:
+    ids = inputs["meal_ids"]
+    results = []
+    for sk in ids:
+        storage.delete_meal(user_id, sk)
+        still_exists = storage.verify_meal_exists(user_id, sk)
+        if not still_exists:
+            results.append(f"✓ {sk[:16]}...")
+        else:
+            results.append(f"✗ FALLO {sk[:16]}...")
+    ok = sum(1 for r in results if r.startswith("✓"))
+    return f"Eliminadas {ok}/{len(ids)} comidas.\n" + "\n".join(results)
+
+
 HANDLERS = {
     "log_meal": _log_meal,
     "get_nutrition_summary": _get_nutrition_summary,
     "get_recent_meals": _get_recent_meals,
     "delete_meal": _delete_meal,
+    "delete_meals_bulk": _delete_meals_bulk,
 }
