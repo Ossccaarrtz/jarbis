@@ -199,38 +199,63 @@ def _get_recent_meals(user_id: str, inputs: dict) -> str:
     return json.dumps({"meals": items, "count": len(items)}, ensure_ascii=False)
 
 
+_MEAL_UPDATABLE = {"description", "calories", "meal_type"}
+
+
 def _update_meal(user_id: str, inputs: dict) -> str:
     sk = inputs["meal_id"]
-    fields = {k: v for k, v in inputs.items() if k != "meal_id"}
+    raw = {k: v for k, v in inputs.items() if k != "meal_id"}
+    invalid = sorted(set(raw) - _MEAL_UPDATABLE)
+    fields = {k: v for k, v in raw.items() if k in _MEAL_UPDATABLE}
+
     if not fields:
+        if invalid:
+            return (
+                f"ERROR: Los campos {invalid} no son editables. "
+                f"Solo se pueden actualizar: {sorted(_MEAL_UPDATABLE)}. "
+                "Para cambiar la fecha, elimina la comida y créala de nuevo con la fecha correcta."
+            )
         return "No se especificaron campos a actualizar."
+
+    if not storage.verify_meal_exists(user_id, sk):
+        return f"ERROR: No existe ninguna comida con ID {sk[:16]}... Verifica con get_recent_meals."
+
     storage.update_meal(user_id, sk, fields)
-    exists = storage.verify_meal_exists(user_id, sk)
-    if exists:
-        return f"Comida {sk[:16]}... actualizada correctamente."
-    return f"ERROR: No se encontró la comida {sk[:16]}... Verifica el ID."
+
+    if invalid:
+        return (
+            f"Comida {sk[:16]}... actualizada parcialmente. "
+            f"Ignorados (no editables): {invalid}. "
+            "Para cambiar la fecha, elimina y recrea."
+        )
+    return f"Comida {sk[:16]}... actualizada correctamente."
 
 
 def _delete_meal(user_id: str, inputs: dict) -> str:
     sk = inputs["meal_id"]
+    if not storage.verify_meal_exists(user_id, sk):
+        return f"ERROR: No existe ninguna comida con ID {sk[:16]}... Verifica con get_recent_meals."
     storage.delete_meal(user_id, sk)
-    still_exists = storage.verify_meal_exists(user_id, sk)
-    if not still_exists:
-        return f"Comida {sk[:16]}... eliminada y verificada."
-    return f"ERROR: No se pudo eliminar la comida {sk[:16]}... Inténtalo de nuevo."
+    if storage.verify_meal_exists(user_id, sk):
+        return f"ERROR: No se pudo eliminar la comida {sk[:16]}... Inténtalo de nuevo."
+    return f"Comida {sk[:16]}... eliminada y verificada."
 
 
 def _delete_meals_bulk(user_id: str, inputs: dict) -> str:
+    """Elimina múltiples comidas. Cuenta como éxito solo si el item existía y dejó de existir."""
     ids = inputs["meal_ids"]
     results = []
+    ok = 0
     for sk in ids:
+        if not storage.verify_meal_exists(user_id, sk):
+            results.append(f"✗ NO EXISTE {sk[:16]}...")
+            continue
         storage.delete_meal(user_id, sk)
-        still_exists = storage.verify_meal_exists(user_id, sk)
-        if not still_exists:
-            results.append(f"✓ {sk[:16]}...")
-        else:
+        if storage.verify_meal_exists(user_id, sk):
             results.append(f"✗ FALLO {sk[:16]}...")
-    ok = sum(1 for r in results if r.startswith("✓"))
+        else:
+            results.append(f"✓ {sk[:16]}...")
+            ok += 1
     return f"Eliminadas {ok}/{len(ids)} comidas.\n" + "\n".join(results)
 
 

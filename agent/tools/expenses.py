@@ -211,40 +211,63 @@ def _get_recent_expenses(user_id: str, inputs: dict) -> str:
     return json.dumps({"expenses": items, "count": len(items)}, ensure_ascii=False)
 
 
+_EXPENSE_UPDATABLE = {"amount", "category", "description", "currency"}
+
+
 def _update_expense(user_id: str, inputs: dict) -> str:
     sk = inputs["expense_id"]
-    fields = {k: v for k, v in inputs.items() if k != "expense_id"}
+    raw = {k: v for k, v in inputs.items() if k != "expense_id"}
+    invalid = sorted(set(raw) - _EXPENSE_UPDATABLE)
+    fields = {k: v for k, v in raw.items() if k in _EXPENSE_UPDATABLE}
+
     if not fields:
+        if invalid:
+            return (
+                f"ERROR: Los campos {invalid} no son editables. "
+                f"Solo se pueden actualizar: {sorted(_EXPENSE_UPDATABLE)}. "
+                "Para cambiar la fecha, elimina el gasto y créalo de nuevo con la fecha correcta."
+            )
         return "No se especificaron campos a actualizar."
+
+    if not storage.verify_expense_exists(user_id, sk):
+        return f"ERROR: No existe ningún gasto con ID {sk[:16]}... Verifica con get_recent_expenses."
+
     storage.update_expense(user_id, sk, fields)
-    exists = storage.verify_expense_exists(user_id, sk)
-    if exists:
-        return f"Gasto {sk[:16]}... actualizado correctamente."
-    return f"ERROR: No se encontró el gasto {sk[:16]}... Verifica el ID."
+
+    if invalid:
+        return (
+            f"Gasto {sk[:16]}... actualizado parcialmente. "
+            f"Ignorados (no editables): {invalid}. "
+            "Para cambiar la fecha, elimina y recrea."
+        )
+    return f"Gasto {sk[:16]}... actualizado correctamente."
 
 
 def _delete_expense(user_id: str, inputs: dict) -> str:
     sk = inputs["expense_id"]
+    if not storage.verify_expense_exists(user_id, sk):
+        return f"ERROR: No existe ningún gasto con ID {sk[:16]}... Verifica con get_recent_expenses."
     storage.delete_expense(user_id, sk)
-    # Verificar que realmente se eliminó
-    still_exists = storage.verify_expense_exists(user_id, sk)
-    if not still_exists:
-        return f"Gasto {sk[:16]}... eliminado y verificado."
-    return f"ERROR: No se pudo eliminar el gasto {sk[:16]}... Inténtalo de nuevo."
+    if storage.verify_expense_exists(user_id, sk):
+        return f"ERROR: No se pudo eliminar el gasto {sk[:16]}... Inténtalo de nuevo."
+    return f"Gasto {sk[:16]}... eliminado y verificado."
 
 
 def _delete_expenses_bulk(user_id: str, inputs: dict) -> str:
-    """Elimina múltiples gastos de una sola vez y verifica cada uno."""
+    """Elimina múltiples gastos. Cuenta como éxito solo si el item existía y dejó de existir."""
     ids = inputs["expense_ids"]
     results = []
+    ok = 0
     for sk in ids:
+        if not storage.verify_expense_exists(user_id, sk):
+            results.append(f"✗ NO EXISTE {sk[:16]}...")
+            continue
         storage.delete_expense(user_id, sk)
-        still_exists = storage.verify_expense_exists(user_id, sk)
-        if not still_exists:
-            results.append(f"✓ {sk[:16]}...")
-        else:
+        if storage.verify_expense_exists(user_id, sk):
             results.append(f"✗ FALLO {sk[:16]}...")
-    ok = sum(1 for r in results if r.startswith("✓"))
+        else:
+            results.append(f"✓ {sk[:16]}...")
+            ok += 1
     return f"Eliminados {ok}/{len(ids)} gastos.\n" + "\n".join(results)
 
 
