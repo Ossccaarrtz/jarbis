@@ -1,115 +1,115 @@
 # Jarbis
 
-Asistente personal agentic con interfaz Telegram + dashboard web. Registra gastos, comidas, eventos de calendario y recordatorios en lenguaje natural.
+A personal agentic assistant with a Telegram interface + web dashboard. Logs expenses, meals, calendar events, and reminders in natural language.
 
 ---
 
-## Funcionalidades
+## Features
 
-### Bot de Telegram
-- **Gastos** — registrar, consultar por período, corregir y eliminar (individual o en bloque)
-- **Nutrición** — registrar comidas con calorías estimadas, consultar resumen calórico, corregir y eliminar
-- **Calendario** — crear, modificar y eliminar eventos en Google Calendar
-- **Recordatorios** — crear recordatorios con fecha/hora exacta (disparan notificación por Telegram)
-- **Preferencias** — guardar budget mensual/semanal, meta calórica diaria, zona horaria
-- **Multi-turno** — contexto conversacional (últimos 10 mensajes)
-- **Anti-alucinación** — el agente verifica toda operación de escritura antes de confirmarla
+### Telegram Bot
+- **Expenses** — log, query by period, edit, and delete (single or bulk)
+- **Nutrition** — log meals with estimated calories, query calorie summaries, edit and delete
+- **Calendar** — create, update, and delete events in Google Calendar
+- **Reminders** — set reminders with exact date/time (triggers a Telegram notification)
+- **Preferences** — save monthly/weekly budget, daily calorie goal, timezone
+- **Multi-turn** — conversational context (last 10 messages)
+- **Anti-hallucination** — the agent verifies every write operation before confirming it
 
-### Dashboard Web
-- Resumen del día: gasto, calorías, próximo evento
-- Gastos del mes: gráfica de dona por categoría, progreso vs budget mensual
-- Historial de transacciones: hoy / semana / mes
-- Nutrición: anillo calórico, desglose por comida, progreso semanal
-- Agenda: próximos 14 días de Google Calendar + recordatorios pendientes
+### Web Dashboard
+- Daily summary: spend, calories, next event
+- Monthly expenses: donut chart by category, progress vs monthly budget
+- Transaction history: today / week / month
+- Nutrition: calorie ring, meal breakdown, weekly progress
+- Agenda: next 14 days from Google Calendar + pending reminders
 
 ---
 
-## Arquitectura
+## Architecture
 
 ```
-Usuario (Telegram)
-  → mensaje en lenguaje natural
+User (Telegram)
+  → natural language message
     → API Gateway (AWS)
       → Lambda A: jarbis-handler
-          · responde 200 a Telegram inmediatamente (evita timeout 5s)
-          · valida secret token y chat_id autorizado
-          · invoca Lambda B de forma async (InvocationType=Event)
+          · responds 200 to Telegram immediately (avoids 5s timeout)
+          · validates secret token and authorized chat_id
+          · invokes Lambda B asynchronously (InvocationType=Event)
         → Lambda B: jarbis-agent
-            · recupera historial de DynamoDB (últimos 10 mensajes)
-            · llama Claude Haiku 3.5 con tools
-            · loop agentic: Claude decide qué tools llamar
-            · ejecuta tools, verifica resultados
-            · guarda turno en DynamoDB
-            · responde al usuario por Telegram Bot API
+            · fetches conversation history from DynamoDB (last 10 messages)
+            · calls Claude Haiku 3.5 with tools
+            · agentic loop: Claude decides which tools to call
+            · executes tools, verifies results
+            · saves turn to DynamoDB
+            · sends response to user via Telegram Bot API
 
 Dashboard
   → React + Vite (Vercel)
     → FastAPI (Render)
-      → DynamoDB (gastos, comidas, recordatorios, preferencias)
+      → DynamoDB (expenses, meals, reminders, preferences)
       → Google Calendar API
 ```
 
-### Recordatorios
+### Reminders
 
 ```
 set_reminder(message, datetime)
   → DynamoDB: jarbis-reminders
-  → EventBridge Scheduler: job one-shot en la fecha indicada
+  → EventBridge Scheduler: one-shot job at the given datetime
       → Lambda C: jarbis-reminder-dispatcher
-          · envía mensaje por Telegram
-          · marca reminder como sent=true en DynamoDB
+          · sends message via Telegram
+          · marks reminder as sent=true in DynamoDB
 ```
 
 ---
 
 ## Stack
 
-| Componente | Servicio | Costo |
+| Component | Service | Cost |
 |---|---|---|
-| Bot | Telegram Bot API | Gratis |
+| Bot | Telegram Bot API | Free |
 | API Gateway | AWS API Gateway | Free tier |
-| Agente | AWS Lambda Python 3.12 | Free tier |
+| Agent | AWS Lambda Python 3.12 | Free tier |
 | LLM | Claude Haiku 3.5 (Anthropic) | ~$0.80/1M tokens |
-| Base de datos | AWS DynamoDB | Free tier |
+| Database | AWS DynamoDB | Free tier |
 | Scheduler | AWS EventBridge Scheduler | Free tier |
-| Calendario | Google Calendar API | Gratis |
-| Backend dashboard | FastAPI en Render | Free tier |
-| Frontend dashboard | React + Vite en Vercel | Gratis |
+| Calendar | Google Calendar API | Free |
+| Dashboard backend | FastAPI on Render | Free tier |
+| Dashboard frontend | React + Vite on Vercel | Free |
 
-**Costo estimado: ~$0–1/mes** para uso personal.
+**Estimated cost: ~$0–1/month** for personal use.
 
 ---
 
-## Estructura del proyecto
+## Project Structure
 
 ```
 jarbis/
 ├── agent/
-│   ├── handler.py              # Lambda A — webhook Telegram → invoca agente async
-│   ├── agent_runner.py         # Lambda B — ejecuta loop agentic
-│   ├── agent.py                # Loop: Claude + tools + historial + anti-alucinación
-│   ├── conversation.py         # Lectura/escritura de historial en DynamoDB
-│   ├── scheduler.py            # Crea EventBridge Schedules para recordatorios
-│   ├── storage.py              # Todas las operaciones DynamoDB
+│   ├── handler.py              # Lambda A — Telegram webhook → async agent invoke
+│   ├── agent_runner.py         # Lambda B — runs the agentic loop
+│   ├── agent.py                # Loop: Claude + tools + history + anti-hallucination
+│   ├── conversation.py         # Read/write conversation history in DynamoDB
+│   ├── scheduler.py            # Creates EventBridge Schedules for reminders
+│   ├── storage.py              # All DynamoDB operations
 │   ├── telegram.py             # send_message, send_typing helpers
-│   ├── google_calendar.py      # Wrapper Google Calendar API
-│   ├── auth_calendar.py        # Script de autorización OAuth2 (solo local, una vez)
-│   ├── deploy.sh               # Build Docker (Linux) + zip + deploy a Lambda
-│   ├── requirements.txt        # Versiones pinneadas
+│   ├── google_calendar.py      # Google Calendar API wrapper
+│   ├── auth_calendar.py        # OAuth2 authorization script (local only, run once)
+│   ├── deploy.sh               # Docker (Linux) build + zip + Lambda deploy
+│   ├── requirements.txt        # Pinned versions
 │   └── tools/
-│       ├── __init__.py         # Agrega todos los DEFINITIONS y HANDLERS
+│       ├── __init__.py         # Combines all DEFINITIONS and HANDLERS
 │       ├── expenses.py         # save, get_summary, get_recent, update, delete, delete_bulk
 │       ├── nutrition.py        # log, get_summary, get_recent, update, delete, delete_bulk
-│       ├── calendar.py         # create, list, update, delete (con verificación post-acción)
+│       ├── calendar.py         # create, list, update, delete (with post-action verification)
 │       ├── reminders.py        # set_reminder, list_reminders, delete_reminder
 │       └── preferences.py      # save_preference, get_preference
 └── dashboard/
     ├── backend/
     │   ├── main.py             # FastAPI app, CORS, auth
     │   ├── db.py               # DynamoDB resource, helpers
-    │   ├── requirements.txt    # Versiones pinneadas
+    │   ├── requirements.txt    # Pinned versions
     │   └── routers/
-    │       ├── summary.py      # GET /api/summary — resumen del día
+    │       ├── summary.py      # GET /api/summary — daily summary
     │       ├── expenses.py     # GET /api/expenses/{today,weekly,monthly}
     │       ├── nutrition.py    # GET /api/nutrition/{today,weekly}
     │       ├── calendar.py     # GET /api/calendar/{days}
@@ -119,7 +119,7 @@ jarbis/
         │   ├── App.jsx
         │   ├── main.jsx
         │   ├── lib/
-        │   │   ├── api.js      # Wrapper fetch con Bearer token
+        │   │   ├── api.js      # Fetch wrapper with Bearer token
         │   │   └── utils.js    # formatKRW, formatDate, categoryColor, etc.
         │   ├── components/
         │   │   ├── Layout.jsx
@@ -132,48 +132,48 @@ jarbis/
         │       ├── Agenda.jsx
         │       └── Login.jsx
         └── public/
-            └── sw.js           # Service Worker sin caché (para PWA en iOS)
+            └── sw.js           # No-cache Service Worker (for iOS PWA)
 ```
 
 ---
 
-## DynamoDB — tablas
+## DynamoDB Tables
 
-| Tabla | PK | SK | Atributos clave |
+| Table | PK | SK | Key attributes |
 |---|---|---|---|
 | `jarbis-expenses` | `user_id` | `YYYY-MM-DDTHH:MM:SS#uuid` | amount, category, currency, description |
 | `jarbis-meals` | `user_id` | `YYYY-MM-DDTHH:MM:SS#uuid` | calories, meal_type, description |
 | `jarbis-reminders` | `user_id` | `remind_at#schedule_name` | message, sent, remind_at |
 | `jarbis-preferences` | `user_id` | `key` | value |
-| `jarbis-conversations` | `user_id` | `timestamp ISO8601` | role, content (TTL: 24h) |
+| `jarbis-conversations` | `user_id` | `ISO8601 timestamp` | role, content (TTL: 24h) |
 
 ---
 
-## Setup completo desde cero
+## Setup Guide
 
-### Requisitos previos
-- Cuenta AWS con CLI configurado (`aws configure`)
-- Cuenta Anthropic con API key
-- Bot de Telegram creado con @BotFather
-- Proyecto Google Cloud con Calendar API habilitada
-- Docker Desktop instalado (para build Linux de Lambda)
+### Prerequisites
+- AWS account with CLI configured (`aws configure`)
+- Anthropic API key
+- Telegram bot created via @BotFather
+- Google Cloud project with Calendar API enabled
+- Docker Desktop (for Linux Lambda builds)
 - Python 3.12, Node.js 18+
 
 ---
 
-### 1. Clonar el repo
+### 1. Clone the repo
 
 ```bash
-git clone https://github.com/tu-usuario/jarbis.git
+git clone https://github.com/your-username/jarbis.git
 cd jarbis
 ```
 
 ---
 
-### 2. DynamoDB — crear tablas
+### 2. DynamoDB — create tables
 
 ```bash
-# Repetir para cada tabla con sus parámetros
+# Run for each table (all share the same PK/SK structure)
 aws dynamodb create-table \
   --table-name jarbis-expenses \
   --attribute-definitions AttributeName=user_id,AttributeType=S AttributeName=sk,AttributeType=S \
@@ -181,15 +181,14 @@ aws dynamodb create-table \
   --billing-mode PAY_PER_REQUEST \
   --region us-east-1
 
-# Repetir para: jarbis-meals, jarbis-reminders, jarbis-preferences, jarbis-conversations
-# (misma estructura de PK/SK)
+# Repeat for: jarbis-meals, jarbis-reminders, jarbis-preferences, jarbis-conversations
 
-# Habilitar TTL en tablas que lo necesitan
+# Enable TTL on tables that need it
 aws dynamodb update-time-to-live \
   --table-name jarbis-conversations \
   --time-to-live-specification Enabled=true,AttributeName=expires_at \
   --region us-east-1
-# Repetir TTL para: jarbis-expenses, jarbis-meals, jarbis-reminders
+# Repeat TTL for: jarbis-expenses, jarbis-meals, jarbis-reminders
 ```
 
 ---
@@ -199,32 +198,33 @@ aws dynamodb update-time-to-live \
 ```bash
 cd agent
 
-# 1. Crear proyecto en Google Cloud Console
-# 2. Habilitar Calendar API
-# 3. Crear credenciales OAuth2 (tipo: Desktop app)
-# 4. Descargar credentials.json al directorio agent/
+# 1. Go to Google Cloud Console → create a project
+# 2. Enable Calendar API
+# 3. Create OAuth2 credentials (type: Desktop app)
+# 4. Download credentials.json to the agent/ directory
 
 python auth_calendar.py
-# Abre navegador → autoriza → genera token.json
+# Opens browser → authorize → generates token.json
 
-# Encodear token.json para env var de Lambda
-python -c "import base64, open; print(base64.b64encode(open('token.json','rb').read()).decode())"
-# Guardar el output como GOOGLE_CALENDAR_CREDENTIALS
+# Encode token.json for Lambda env var
+python -c "import base64; print(base64.b64encode(open('token.json','rb').read()).decode())"
+# Save the output as GOOGLE_CALENDAR_CREDENTIALS
 ```
 
 ---
 
-### 4. Lambdas — crear funciones
+### 4. Lambda — create functions
 
 ```bash
-# Crear rol IAM con permisos: DynamoDB, Lambda:InvokeFunction, scheduler:CreateSchedule, CloudWatch Logs
-# Nombre sugerido: jarbis-lambda-role
+# Create IAM role with permissions:
+# AmazonDynamoDBFullAccess, AWSLambda_FullAccess,
+# AmazonEventBridgeSchedulerFullAccess, CloudWatchLogsFullAccess
+# Suggested name: jarbis-lambda-role
 
-# Crear las tres funciones (primero con código vacío, deploy.sh actualizará)
 aws lambda create-function \
   --function-name jarbis-handler \
   --runtime python3.12 \
-  --role arn:aws:iam::TU_ACCOUNT_ID:role/jarbis-lambda-role \
+  --role arn:aws:iam::YOUR_ACCOUNT_ID:role/jarbis-lambda-role \
   --handler handler.lambda_handler \
   --zip-file fileb://placeholder.zip \
   --timeout 10 \
@@ -234,7 +234,7 @@ aws lambda create-function \
 aws lambda create-function \
   --function-name jarbis-agent \
   --runtime python3.12 \
-  --role arn:aws:iam::TU_ACCOUNT_ID:role/jarbis-lambda-role \
+  --role arn:aws:iam::YOUR_ACCOUNT_ID:role/jarbis-lambda-role \
   --handler agent_runner.lambda_handler \
   --zip-file fileb://placeholder.zip \
   --timeout 120 \
@@ -244,7 +244,7 @@ aws lambda create-function \
 aws lambda create-function \
   --function-name jarbis-reminder-dispatcher \
   --runtime python3.12 \
-  --role arn:aws:iam::TU_ACCOUNT_ID:role/jarbis-lambda-role \
+  --role arn:aws:iam::YOUR_ACCOUNT_ID:role/jarbis-lambda-role \
   --handler reminder_dispatcher.lambda_handler \
   --zip-file fileb://placeholder.zip \
   --timeout 30 \
@@ -252,13 +252,13 @@ aws lambda create-function \
   --region us-east-1
 ```
 
-**Variables de entorno para `jarbis-handler` y `jarbis-agent`:**
+Set these environment variables on `jarbis-handler` and `jarbis-agent`:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 TELEGRAM_BOT_TOKEN=...
-TELEGRAM_CHAT_ID=tu_chat_id_numerico
-TELEGRAM_SECRET_TOKEN=cadena_aleatoria_segura
+TELEGRAM_CHAT_ID=your_numeric_chat_id
+TELEGRAM_SECRET_TOKEN=random_secure_string
 AGENT_LAMBDA_NAME=jarbis-agent
 DYNAMODB_TABLE_EXPENSES=jarbis-expenses
 DYNAMODB_TABLE_MEALS=jarbis-meals
@@ -266,44 +266,45 @@ DYNAMODB_TABLE_REMINDERS=jarbis-reminders
 DYNAMODB_TABLE_PREFERENCES=jarbis-preferences
 DYNAMODB_TABLE_CONVERSATIONS=jarbis-conversations
 AWS_REGION=us-east-1
-GOOGLE_CALENDAR_CREDENTIALS=<base64 del token.json>
+GOOGLE_CALENDAR_CREDENTIALS=<base64 of token.json>
 GOOGLE_CALENDAR_ID=primary
-EVENTBRIDGE_ROLE_ARN=arn:aws:iam::TU_ACCOUNT_ID:role/jarbis-lambda-role
-DISPATCHER_LAMBDA_ARN=arn:aws:lambda:us-east-1:TU_ACCOUNT_ID:function:jarbis-reminder-dispatcher
+EVENTBRIDGE_ROLE_ARN=arn:aws:iam::YOUR_ACCOUNT_ID:role/jarbis-lambda-role
+DISPATCHER_LAMBDA_ARN=arn:aws:lambda:us-east-1:YOUR_ACCOUNT_ID:function:jarbis-reminder-dispatcher
 ```
 
 ---
 
-### 5. API Gateway — webhook Telegram
+### 5. API Gateway — Telegram webhook
 
 ```bash
-# Crear HTTP API en API Gateway apuntando a jarbis-handler
-# Obtener la URL: https://xxxx.execute-api.us-east-1.amazonaws.com/
+# Create an HTTP API in API Gateway pointing to jarbis-handler
+# Get the URL: https://xxxx.execute-api.us-east-1.amazonaws.com/
 
-# Registrar webhook en Telegram
+# Register the webhook with Telegram
 curl "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -d "url=https://xxxx.execute-api.us-east-1.amazonaws.com/" \
-  -d "secret_token=TU_TELEGRAM_SECRET_TOKEN"
+  -d "secret_token=YOUR_TELEGRAM_SECRET_TOKEN"
 ```
 
 ---
 
-### 6. Deploy del agente
+### 6. Deploy the agent
 
 ```bash
 cd agent
 bash deploy.sh
-# Requiere Docker corriendo — build con imagen Linux de Lambda
+# Requires Docker running — builds with the official Lambda Linux image
 ```
 
 ---
 
 ### 7. Dashboard backend (Render)
 
-1. Crear nuevo Web Service en Render apuntando al repo, directorio `dashboard/backend`
+1. Create a new Web Service on Render pointing to the repo, root directory `dashboard/backend`
 2. Build command: `pip install -r requirements.txt`
 3. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-4. Variables de entorno en Render:
+4. Set environment variables on Render:
+
 ```
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
@@ -312,12 +313,13 @@ DYNAMODB_TABLE_EXPENSES=jarbis-expenses
 DYNAMODB_TABLE_MEALS=jarbis-meals
 DYNAMODB_TABLE_REMINDERS=jarbis-reminders
 DYNAMODB_TABLE_PREFERENCES=jarbis-preferences
-GOOGLE_CALENDAR_CREDENTIALS=<base64 del token.json>
+GOOGLE_CALENDAR_CREDENTIALS=<base64 of token.json>
 GOOGLE_CALENDAR_ID=primary
-DASHBOARD_ACCESS_TOKEN=token_secreto_del_dashboard
-CORS_ALLOWED_ORIGINS=https://tu-app.vercel.app
+DASHBOARD_ACCESS_TOKEN=your_dashboard_secret_token
+CORS_ALLOWED_ORIGINS=https://your-app.vercel.app
 ```
-5. Para mantener Render activo (free tier): configurar UptimeRobot con ping HEAD a `https://tu-app.onrender.com/health` cada 5 minutos.
+
+5. To keep Render alive on the free tier: set up an UptimeRobot monitor with a HEAD request to `https://your-app.onrender.com/health` every 5 minutes.
 
 ---
 
@@ -328,74 +330,74 @@ cd dashboard/frontend
 npm install
 ```
 
-Crear `.env.production`:
+Create `.env.production`:
 ```
-VITE_API_URL=https://tu-app.onrender.com
+VITE_API_URL=https://your-app.onrender.com
 ```
 
-Deploy en Vercel:
+Deploy to Vercel:
 ```bash
 npx vercel --prod
 ```
 
-O conectar el repo en vercel.com con root directory `dashboard/frontend`.
+Or connect the repo on vercel.com with root directory set to `dashboard/frontend`.
 
 ---
 
-### 9. PWA en iOS (opcional)
+### 9. iOS PWA (optional)
 
-1. Abrir el dashboard en Safari
-2. Compartir → Agregar a pantalla de inicio
-3. El Service Worker (`public/sw.js`) desactiva el caché para que siempre cargue la versión más reciente
+1. Open the dashboard in Safari
+2. Share → Add to Home Screen
+3. The Service Worker (`public/sw.js`) bypasses the cache so the latest version always loads
 
 ---
 
-## Variables de entorno — resumen
+## Environment Variables Reference
 
 ### Agent (Lambda)
-| Variable | Descripción |
+| Variable | Description |
 |---|---|
-| `ANTHROPIC_API_KEY` | API key de Anthropic |
-| `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram |
-| `TELEGRAM_CHAT_ID` | Chat ID numérico autorizado |
-| `TELEGRAM_SECRET_TOKEN` | Secret para validar webhook (requerido) |
-| `AGENT_LAMBDA_NAME` | Nombre de la función jarbis-agent |
-| `DYNAMODB_TABLE_*` | Nombres de las tablas DynamoDB |
-| `AWS_REGION` | Región AWS |
-| `GOOGLE_CALENDAR_CREDENTIALS` | token.json en base64 |
-| `GOOGLE_CALENDAR_ID` | ID del calendario (`primary` o específico) |
-| `EVENTBRIDGE_ROLE_ARN` | ARN del rol para EventBridge Scheduler |
-| `DISPATCHER_LAMBDA_ARN` | ARN de jarbis-reminder-dispatcher |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token |
+| `TELEGRAM_CHAT_ID` | Authorized numeric chat ID |
+| `TELEGRAM_SECRET_TOKEN` | Webhook secret (required — startup fails if missing) |
+| `AGENT_LAMBDA_NAME` | Name of the jarbis-agent function |
+| `DYNAMODB_TABLE_*` | DynamoDB table names |
+| `AWS_REGION` | AWS region |
+| `GOOGLE_CALENDAR_CREDENTIALS` | token.json encoded in base64 |
+| `GOOGLE_CALENDAR_ID` | Calendar ID (`primary` or specific) |
+| `EVENTBRIDGE_ROLE_ARN` | IAM role ARN for EventBridge Scheduler |
+| `DISPATCHER_LAMBDA_ARN` | ARN of jarbis-reminder-dispatcher |
 
 ### Dashboard backend (Render)
-| Variable | Descripción |
+| Variable | Description |
 |---|---|
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Credenciales IAM |
-| `AWS_REGION` | Región AWS |
-| `DYNAMODB_TABLE_*` | Nombres de las tablas |
-| `GOOGLE_CALENDAR_CREDENTIALS` | token.json en base64 |
-| `GOOGLE_CALENDAR_ID` | ID del calendario |
-| `DASHBOARD_ACCESS_TOKEN` | Token de acceso al dashboard |
-| `CORS_ALLOWED_ORIGINS` | Dominio del frontend (ej: `https://jarbis.vercel.app`) |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | IAM credentials |
+| `AWS_REGION` | AWS region |
+| `DYNAMODB_TABLE_*` | DynamoDB table names |
+| `GOOGLE_CALENDAR_CREDENTIALS` | token.json encoded in base64 |
+| `GOOGLE_CALENDAR_ID` | Calendar ID |
+| `DASHBOARD_ACCESS_TOKEN` | Dashboard access token |
+| `CORS_ALLOWED_ORIGINS` | Frontend domain (e.g. `https://jarbis.vercel.app`) |
 
 ### Dashboard frontend (Vercel)
-| Variable | Descripción |
+| Variable | Description |
 |---|---|
-| `VITE_API_URL` | URL del backend en Render |
+| `VITE_API_URL` | Backend URL on Render |
 
 ---
 
-## Ejemplos de uso
+## Usage Examples
 
 ```
-"gasté 15,000 won en ramen"
-"desayuné avena con fruta, unas 400 calorías"
-"crea un evento el viernes a las 7pm, cena con amigos"
-"recuérdame llamar al doctor mañana a las 9am"
-"cuánto gasté este mes?"
-"cómo voy con las calorías hoy?"
-"qué tengo esta semana?"
-"cambia mi presupuesto mensual a 800,000 won"
-"corrige el almuerzo de hoy, fueron 650 calorías no 400"
-"borra el gasto de transporte del lunes"
+"spent 15,000 won on ramen"
+"had oatmeal with fruit for breakfast, around 400 calories"
+"create an event this Friday at 7pm, dinner with friends"
+"remind me to call the doctor tomorrow at 9am"
+"how much did I spend this month?"
+"how are my calories looking today?"
+"what do I have this week?"
+"set my monthly budget to 800,000 won"
+"fix today's lunch, it was 650 calories not 400"
+"delete the transport expense from Monday"
 ```
