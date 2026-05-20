@@ -93,8 +93,10 @@ def run_agent(user_id: str, user_message: str) -> str:
             for block in response.content:
                 if block.type != "tool_use":
                     continue
+                print(f"[TOOL CALL] {block.name} | input: {block.input}")
                 try:
                     result = execute_tool(user_id, block.name, block.input)
+                    print(f"[TOOL RESULT] {block.name} | result: {str(result)[:200]}")
                 except Exception as e:
                     print(f"[TOOL ERROR] {block.name}: {e}")
                     result = f"Error al ejecutar {block.name}: {e}"
