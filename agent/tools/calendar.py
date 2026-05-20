@@ -71,7 +71,11 @@ def _create_calendar_event(user_id: str, inputs: dict) -> str:
         description=inputs.get("description", ""),
         end_datetime=inputs.get("end_datetime"),
     )
-    return f"Evento creado: {result['title']} el {result['start']}"
+    event_id = result["id"]
+    verified = google_calendar.get_event(event_id)
+    if verified:
+        return f"Evento creado y verificado en Google Calendar: {result['title']} el {result['start']} (id: {event_id})"
+    return f"ERROR: El evento no se pudo verificar en Google Calendar. Inténtalo de nuevo."
 
 
 def _list_events(user_id: str, inputs: dict) -> str:

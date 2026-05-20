@@ -127,6 +127,15 @@ def list_events(days_ahead: int = 7) -> list[dict]:
     return events
 
 
+def get_event(event_id: str) -> dict | None:
+    """Obtiene un evento por ID. Retorna None si no existe."""
+    try:
+        item = _service().events().get(calendarId=CALENDAR_ID, eventId=event_id).execute()
+        return {"id": item["id"], "title": item.get("summary", "Sin título")}
+    except Exception:
+        return None
+
+
 def delete_event(event_id: str) -> None:
     """Elimina un evento de Google Calendar."""
     _service().events().delete(calendarId=CALENDAR_ID, eventId=event_id).execute()
