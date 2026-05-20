@@ -1,16 +1,13 @@
-export default function StatCard({ icon, label, value, sub, color = "#8B5CF6" }) {
+export default function StatCard({ icon: Icon, label, value, sub, color = "#8B5CF6" }) {
   return (
-    <div className="bg-[#1A1A24] border border-[#2A2A3A] rounded-2xl p-5 flex items-center gap-4 hover:-translate-y-0.5 transition-transform">
-      <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
-        style={{ backgroundColor: color + "22", color }}
-      >
-        {icon}
+    <div className="bg-[#0F0F18] border border-white/[0.06] rounded-xl p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <span className="text-white/30 text-[11px] font-medium uppercase tracking-widest">{label}</span>
+        {Icon && <Icon size={14} strokeWidth={1.75} style={{ color }} className="opacity-60" />}
       </div>
-      <div className="min-w-0">
-        <p className="text-[#6B7280] text-xs font-medium uppercase tracking-wide">{label}</p>
-        <p className="text-white text-xl font-bold font-mono leading-tight">{value}</p>
-        {sub && <p className="text-[#6B7280] text-xs mt-0.5 truncate">{sub}</p>}
+      <div>
+        <p className="text-white text-2xl font-semibold tracking-tight leading-none">{value}</p>
+        {sub && <p className="text-white/30 text-[11px] mt-1.5">{sub}</p>}
       </div>
     </div>
   );

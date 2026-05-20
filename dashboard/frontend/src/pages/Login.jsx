@@ -4,49 +4,50 @@ import { setToken } from "../lib/api";
 export default function Login({ onLogin }) {
   const [token, setTokenInput] = useState("");
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setLoading(true);
     setToken(token);
     try {
       const res = await fetch((import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/summary", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        onLogin();
-      } else {
-        setError(true);
-        setToken("");
-      }
+      if (res.ok) { onLogin(); }
+      else { setError(true); setToken(""); }
     } catch {
       setError(true);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#0F0F13] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Jarbis<span className="text-[#7C3AED]">.</span></h1>
-          <p className="text-[#6B7280] mt-2 text-sm">Tu asistente personal</p>
+    <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center px-4">
+      <div className="w-full max-w-xs">
+        <div className="mb-8">
+          <h1 className="text-[22px] font-semibold tracking-tight text-white">
+            jarbis<span className="text-violet-500">.</span>
+          </h1>
+          <p className="text-white/30 text-[13px] mt-1">Introduce tu token de acceso</p>
         </div>
-        <form onSubmit={handleSubmit} className="bg-[#1A1A24] border border-[#2A2A3A] rounded-2xl p-6 space-y-4">
-          <div>
-            <label className="block text-sm text-[#9CA3AF] mb-1.5">Token de acceso</label>
-            <input
-              type="password"
-              value={token}
-              onChange={(e) => { setTokenInput(e.target.value); setError(false); }}
-              placeholder="••••••••"
-              className="w-full bg-[#0F0F13] border border-[#2A2A3A] rounded-xl px-4 py-2.5 text-white placeholder-[#4B5563] focus:outline-none focus:border-[#7C3AED] transition-colors"
-            />
-            {error && <p className="text-red-400 text-xs mt-1">Token incorrecto</p>}
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input
+            type="password"
+            value={token}
+            onChange={(e) => { setTokenInput(e.target.value); setError(false); }}
+            placeholder="••••••••••••"
+            autoFocus
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-[14px] placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-colors"
+          />
+          {error && <p className="text-red-400/80 text-[12px]">Token incorrecto</p>}
           <button
             type="submit"
-            className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-medium py-2.5 rounded-xl transition-colors"
+            disabled={loading || !token}
+            className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-[14px] font-medium py-3 rounded-xl transition-colors"
           >
-            Entrar
+            {loading ? "Verificando..." : "Entrar"}
           </button>
         </form>
       </div>
