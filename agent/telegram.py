@@ -10,19 +10,33 @@ def _url(method: str) -> str:
 
 def send_message(chat_id: int | str, text: str) -> None:
     """Envía un mensaje de texto al chat indicado."""
-    requests.post(_url("sendMessage"), json={
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "Markdown",
-    }, timeout=10)
+    try:
+        resp = requests.post(_url("sendMessage"), json={
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "Markdown",
+        }, timeout=10)
+        if not resp.ok:
+            # Retry without Markdown if parse error
+            if resp.status_code == 400:
+                requests.post(_url("sendMessage"), json={
+                    "chat_id": chat_id,
+                    "text": text,
+                }, timeout=10)
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Telegram send_message failed: {e}")
+        raise
 
 
 def send_typing(chat_id: int | str) -> None:
     """Muestra el indicador 'escribiendo...' en Telegram."""
-    requests.post(_url("sendChatAction"), json={
-        "chat_id": chat_id,
-        "action": "typing",
-    }, timeout=5)
+    try:
+        requests.post(_url("sendChatAction"), json={
+            "chat_id": chat_id,
+            "action": "typing",
+        }, timeout=5)
+    except requests.exceptions.RequestException:
+        pass  # Non-critical, ignore silently
 
 
 def get_updates(offset: int | None = None) -> list[dict]:

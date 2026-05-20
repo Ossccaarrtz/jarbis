@@ -10,11 +10,16 @@ from routers import expenses, nutrition, calendar, reminders, summary
 
 app = FastAPI(title="Jarbis Dashboard API")
 
+ALLOWED_ORIGINS = [o.strip() for o in os.environ.get(
+    "CORS_ALLOWED_ORIGINS",
+    "https://jarbis-sand.vercel.app"
+).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 security = HTTPBearer()

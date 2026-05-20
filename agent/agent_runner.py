@@ -13,7 +13,15 @@ def lambda_handler(event, context):
     text = event["text"]
     user_id = str(chat_id)
 
-    response = run_agent(user_id, text)
-    telegram.send_message(chat_id, response)
+    try:
+        response = run_agent(user_id, text)
+    except Exception as e:
+        print(f"[ERROR] run_agent failed: {e}")
+        response = "Hubo un error procesando tu mensaje. Intenta de nuevo."
+
+    try:
+        telegram.send_message(chat_id, response)
+    except Exception as e:
+        print(f"[ERROR] send_message failed: {e}")
 
     return {"statusCode": 200}
