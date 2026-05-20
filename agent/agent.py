@@ -67,6 +67,8 @@ def run_agent(user_id: str, user_message: str) -> str:
     """
     history = get_history(user_id)
     messages = history + [{"role": "user", "content": user_message}]
+    tools_called = 0
+    forced = False
 
     while True:
         response = client.messages.create(
@@ -82,10 +84,21 @@ def run_agent(user_id: str, user_message: str) -> str:
                 (block.text for block in response.content if hasattr(block, "text")),
                 "Listo."
             )
+            # Si Claude respondió sin llamar ninguna tool, intentar forzarlo una vez
+            if tools_called == 0 and not forced:
+                print(f"[WARNING] end_turn sin tool_use — forzando ejecución")
+                messages.append({"role": "assistant", "content": response.content})
+                messages.append({"role": "user", "content": [{
+                    "type": "text",
+                    "text": "IMPORTANTE: No ejecutaste ninguna tool. Debes llamar la tool correspondiente para completar la acción. Hazlo ahora."
+                }]})
+                forced = True
+                continue
             save_turn(user_id, user_message, text)
             return text
 
         if response.stop_reason == "tool_use":
+            tools_called += 1
             # Puede haber múltiples tool_use en un mismo turno
             messages.append({"role": "assistant", "content": response.content})
 

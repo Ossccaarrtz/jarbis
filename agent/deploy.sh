@@ -13,8 +13,8 @@ BUILD_DIR="build"
 ZIP_FILE="jarbis.zip"
 
 echo "==> Limpiando build anterior..."
-rm -rf "$BUILD_DIR" "$ZIP_FILE"
-mkdir "$BUILD_DIR"
+python -c "import shutil, os; shutil.rmtree('$BUILD_DIR', ignore_errors=True); os.makedirs('$BUILD_DIR')"
+rm -f "$ZIP_FILE"
 
 echo "==> Instalando dependencias con Docker (Linux x86_64)..."
 WIN_PWD=$(pwd -W)
