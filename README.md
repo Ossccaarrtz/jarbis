@@ -4,6 +4,21 @@ A personal agentic assistant with a Telegram interface + web dashboard. Logs exp
 
 ---
 
+## Development
+
+```bash
+# Run agent tests (uses moto to mock DynamoDB in-memory)
+cd agent
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+CI runs on every push and PR to `main` via [GitHub Actions](.github/workflows/ci.yml):
+- Agent: pytest (34 tests covering storage, tool handlers, and webhook authorization)
+- Dashboard frontend: lint + build
+
+---
+
 ## Features
 
 ### Telegram Bot
