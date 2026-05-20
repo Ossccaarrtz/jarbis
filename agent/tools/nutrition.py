@@ -97,6 +97,36 @@ DEFINITIONS = [
         },
     },
     {
+        "name": "update_meal",
+        "description": (
+            "Actualiza uno o más campos de una comida registrada (descripción, calorías, tipo). "
+            "Úsala cuando el usuario quiera corregir una comida. "
+            "Primero llama get_recent_meals para obtener el ID."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "meal_id": {
+                    "type": "string",
+                    "description": "ID de la comida a actualizar (campo 'id' del get_recent_meals)",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Nueva descripción (omitir si no cambia)",
+                },
+                "calories": {
+                    "type": "integer",
+                    "description": "Nuevas calorías estimadas (omitir si no cambia)",
+                },
+                "meal_type": {
+                    "type": "string",
+                    "description": "Nuevo tipo de comida: desayuno, almuerzo, cena, snack (omitir si no cambia)",
+                },
+            },
+            "required": ["meal_id"],
+        },
+    },
+    {
         "name": "delete_meals_bulk",
         "description": (
             "Elimina varias comidas de una sola vez y verifica cada eliminación. "
@@ -169,6 +199,18 @@ def _get_recent_meals(user_id: str, inputs: dict) -> str:
     return json.dumps({"meals": items, "count": len(items)}, ensure_ascii=False)
 
 
+def _update_meal(user_id: str, inputs: dict) -> str:
+    sk = inputs["meal_id"]
+    fields = {k: v for k, v in inputs.items() if k != "meal_id"}
+    if not fields:
+        return "No se especificaron campos a actualizar."
+    storage.update_meal(user_id, sk, fields)
+    exists = storage.verify_meal_exists(user_id, sk)
+    if exists:
+        return f"Comida {sk[:16]}... actualizada correctamente."
+    return f"ERROR: No se encontró la comida {sk[:16]}... Verifica el ID."
+
+
 def _delete_meal(user_id: str, inputs: dict) -> str:
     sk = inputs["meal_id"]
     storage.delete_meal(user_id, sk)
@@ -196,6 +238,7 @@ HANDLERS = {
     "log_meal": _log_meal,
     "get_nutrition_summary": _get_nutrition_summary,
     "get_recent_meals": _get_recent_meals,
+    "update_meal": _update_meal,
     "delete_meal": _delete_meal,
     "delete_meals_bulk": _delete_meals_bulk,
 }

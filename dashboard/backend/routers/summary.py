@@ -50,6 +50,7 @@ def get_summary():
     )
     prefs = {item["sk"]: item["value"] for item in pref_resp["Items"]}
     budget_weekly = float(prefs.get("budget_weekly_KRW", 0))
+    budget_monthly = float(prefs.get("budget_monthly_KRW", 0))
     calorie_goal = int(prefs.get("calorie_goal_daily", 2200))
 
     # Pending reminders count
@@ -72,6 +73,7 @@ def get_summary():
         },
         "preferences": {
             "budget_weekly_KRW": budget_weekly,
+            "budget_monthly_KRW": budget_monthly,
             "calorie_goal_daily": calorie_goal,
         },
         "pending_reminders": pending_reminders,

@@ -102,6 +102,40 @@ DEFINITIONS = [
         },
     },
     {
+        "name": "update_expense",
+        "description": (
+            "Actualiza uno o más campos de un gasto existente (monto, categoría, descripción, moneda). "
+            "Úsala cuando el usuario quiera corregir un gasto registrado. "
+            "Primero llama get_recent_expenses para obtener el ID del gasto."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "expense_id": {
+                    "type": "string",
+                    "description": "ID del gasto a actualizar (campo 'id' del get_recent_expenses)",
+                },
+                "amount": {
+                    "type": "number",
+                    "description": "Nuevo monto (omitir si no cambia)",
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Nueva categoría (omitir si no cambia)",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Nueva descripción (omitir si no cambia)",
+                },
+                "currency": {
+                    "type": "string",
+                    "description": "Nuevo código de moneda ISO (omitir si no cambia)",
+                },
+            },
+            "required": ["expense_id"],
+        },
+    },
+    {
         "name": "delete_expenses_bulk",
         "description": (
             "Elimina varios gastos de una sola vez y verifica cada eliminación. "
@@ -177,6 +211,18 @@ def _get_recent_expenses(user_id: str, inputs: dict) -> str:
     return json.dumps({"expenses": items, "count": len(items)}, ensure_ascii=False)
 
 
+def _update_expense(user_id: str, inputs: dict) -> str:
+    sk = inputs["expense_id"]
+    fields = {k: v for k, v in inputs.items() if k != "expense_id"}
+    if not fields:
+        return "No se especificaron campos a actualizar."
+    storage.update_expense(user_id, sk, fields)
+    exists = storage.verify_expense_exists(user_id, sk)
+    if exists:
+        return f"Gasto {sk[:16]}... actualizado correctamente."
+    return f"ERROR: No se encontró el gasto {sk[:16]}... Verifica el ID."
+
+
 def _delete_expense(user_id: str, inputs: dict) -> str:
     sk = inputs["expense_id"]
     storage.delete_expense(user_id, sk)
@@ -206,6 +252,7 @@ HANDLERS = {
     "save_expense": _save_expense,
     "get_expense_summary": _get_expense_summary,
     "get_recent_expenses": _get_recent_expenses,
+    "update_expense": _update_expense,
     "delete_expense": _delete_expense,
     "delete_expenses_bulk": _delete_expenses_bulk,
 }

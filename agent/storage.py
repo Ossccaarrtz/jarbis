@@ -108,6 +108,34 @@ def verify_expense_exists(user_id: str, sk: str) -> bool:
     return "Item" in response
 
 
+def update_expense(user_id: str, sk: str, fields: dict) -> None:
+    """Actualiza campos de un gasto. fields puede contener: amount, category, description, currency."""
+    exprs, names, values = [], {}, {}
+    if "amount" in fields:
+        exprs.append("amount = :amt")
+        values[":amt"] = Decimal(str(fields["amount"]))
+    if "category" in fields:
+        exprs.append("category = :cat")
+        values[":cat"] = fields["category"].lower()
+    if "description" in fields:
+        exprs.append("#desc = :desc")
+        names["#desc"] = "description"
+        values[":desc"] = fields["description"]
+    if "currency" in fields:
+        exprs.append("currency = :cur")
+        values[":cur"] = fields["currency"].upper()
+    if not exprs:
+        return
+    kwargs = {
+        "Key": {"user_id": user_id, "sk": sk},
+        "UpdateExpression": "SET " + ", ".join(exprs),
+        "ExpressionAttributeValues": values,
+    }
+    if names:
+        kwargs["ExpressionAttributeNames"] = names
+    _table("DYNAMODB_TABLE_EXPENSES").update_item(**kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Meals
 # ---------------------------------------------------------------------------
@@ -181,6 +209,31 @@ def verify_meal_exists(user_id: str, sk: str) -> bool:
         ConsistentRead=True,
     )
     return "Item" in response
+
+
+def update_meal(user_id: str, sk: str, fields: dict) -> None:
+    """Actualiza campos de una comida. fields puede contener: description, calories, meal_type."""
+    exprs, names, values = [], {}, {}
+    if "description" in fields:
+        exprs.append("#desc = :desc")
+        names["#desc"] = "description"
+        values[":desc"] = fields["description"]
+    if "calories" in fields:
+        exprs.append("calories = :cal")
+        values[":cal"] = int(fields["calories"])
+    if "meal_type" in fields:
+        exprs.append("meal_type = :mt")
+        values[":mt"] = fields["meal_type"].lower()
+    if not exprs:
+        return
+    kwargs = {
+        "Key": {"user_id": user_id, "sk": sk},
+        "UpdateExpression": "SET " + ", ".join(exprs),
+        "ExpressionAttributeValues": values,
+    }
+    if names:
+        kwargs["ExpressionAttributeNames"] = names
+    _table("DYNAMODB_TABLE_MEALS").update_item(**kwargs)
 
 
 # ---------------------------------------------------------------------------

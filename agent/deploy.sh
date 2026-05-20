@@ -16,17 +16,34 @@ echo "==> Limpiando build anterior..."
 rm -rf "$BUILD_DIR" "$ZIP_FILE"
 mkdir "$BUILD_DIR"
 
-echo "==> Instalando dependencias..."
-pip install -r requirements.txt -t "$BUILD_DIR" --quiet
+echo "==> Instalando dependencias con Docker (Linux x86_64)..."
+WIN_PWD=$(pwd -W)
+MSYS_NO_PATHCONV=1 docker run --rm --entrypoint pip \
+  -v "${WIN_PWD}/requirements.txt:/requirements.txt" \
+  -v "${WIN_PWD}/${BUILD_DIR}:/build" \
+  public.ecr.aws/lambda/python:3.12 \
+  install -r /requirements.txt -t /build --quiet
 
 echo "==> Copiando fuentes..."
 cp *.py "$BUILD_DIR/"
 cp -r tools "$BUILD_DIR/tools"
 
 echo "==> Creando zip..."
-cd "$BUILD_DIR"
-zip -r "../$ZIP_FILE" . -q
-cd ..
+python -c "
+import zipfile, os, sys
+build = sys.argv[1]
+out = sys.argv[2]
+with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
+    for root, dirs, files in os.walk(build):
+        dirs[:] = [d for d in dirs if d != '__pycache__']
+        for file in files:
+            if file.endswith('.pyc'):
+                continue
+            full = os.path.join(root, file)
+            arcname = os.path.relpath(full, build)
+            zf.write(full, arcname)
+print('Zip creado:', out)
+" "$BUILD_DIR" "$ZIP_FILE"
 
 echo "==> Desplegando $HANDLER_FUNCTION..."
 aws lambda update-function-code \

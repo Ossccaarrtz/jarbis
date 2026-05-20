@@ -42,7 +42,7 @@ export default function Home() {
   const calorieColor = caloriePercent < 70 ? "#10B981" : caloriePercent < 90 ? "#F59E0B" : "#EF4444";
   const monthSpend = data?.month?.spend || 0;
   const weeklyBudget = data?.preferences?.budget_weekly_KRW || 0;
-  const monthlyBudget = weeklyBudget * 4;
+  const monthlyBudget = data?.preferences?.budget_monthly_KRW || weeklyBudget * 4;
   const nextEvent = events[0];
 
   const categoryData = Object.entries(data?.month?.by_category || {}).map(([k, v]) => ({
