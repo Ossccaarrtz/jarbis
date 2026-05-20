@@ -87,7 +87,8 @@ DEFINITIONS = [
         "name": "delete_expense",
         "description": (
             "Elimina un gasto específico. "
-            "Primero llama get_recent_expenses para obtener el ID del gasto a eliminar."
+            "Primero llama get_recent_expenses o get_expense_summary para obtener el ID. "
+            "Si necesitas eliminar VARIOS gastos, usa delete_expenses_bulk en su lugar."
         ),
         "input_schema": {
             "type": "object",
@@ -98,6 +99,25 @@ DEFINITIONS = [
                 },
             },
             "required": ["expense_id"],
+        },
+    },
+    {
+        "name": "delete_expenses_bulk",
+        "description": (
+            "Elimina varios gastos de una sola vez y verifica cada eliminación. "
+            "Úsala cuando el usuario quiera borrar múltiples gastos. "
+            "Primero llama get_expense_summary para obtener los IDs."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "expense_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Lista de IDs de gastos a eliminar",
+                },
+            },
+            "required": ["expense_ids"],
         },
     },
 ]
@@ -112,7 +132,11 @@ def _save_expense(user_id: str, inputs: dict) -> str:
         currency=inputs["currency"],
         date=inputs.get("date"),
     )
-    return f"Gasto guardado correctamente (id: {sk})"
+    # Verificar que realmente se guardó
+    saved = storage.verify_expense_exists(user_id, sk)
+    if saved:
+        return f"Gasto guardado y verificado en base de datos (id: {sk})"
+    return f"ERROR: El gasto no se pudo guardar en la base de datos. Inténtalo de nuevo."
 
 
 def _get_expense_summary(user_id: str, inputs: dict) -> str:
@@ -154,8 +178,28 @@ def _get_recent_expenses(user_id: str, inputs: dict) -> str:
 
 
 def _delete_expense(user_id: str, inputs: dict) -> str:
-    storage.delete_expense(user_id, inputs["expense_id"])
-    return "Gasto eliminado correctamente."
+    sk = inputs["expense_id"]
+    storage.delete_expense(user_id, sk)
+    # Verificar que realmente se eliminó
+    still_exists = storage.verify_expense_exists(user_id, sk)
+    if not still_exists:
+        return f"Gasto {sk[:16]}... eliminado y verificado."
+    return f"ERROR: No se pudo eliminar el gasto {sk[:16]}... Inténtalo de nuevo."
+
+
+def _delete_expenses_bulk(user_id: str, inputs: dict) -> str:
+    """Elimina múltiples gastos de una sola vez y verifica cada uno."""
+    ids = inputs["expense_ids"]
+    results = []
+    for sk in ids:
+        storage.delete_expense(user_id, sk)
+        still_exists = storage.verify_expense_exists(user_id, sk)
+        if not still_exists:
+            results.append(f"✓ {sk[:16]}...")
+        else:
+            results.append(f"✗ FALLO {sk[:16]}...")
+    ok = sum(1 for r in results if r.startswith("✓"))
+    return f"Eliminados {ok}/{len(ids)} gastos.\n" + "\n".join(results)
 
 
 HANDLERS = {
@@ -163,4 +207,5 @@ HANDLERS = {
     "get_expense_summary": _get_expense_summary,
     "get_recent_expenses": _get_recent_expenses,
     "delete_expense": _delete_expense,
+    "delete_expenses_bulk": _delete_expenses_bulk,
 }

@@ -106,7 +106,10 @@ def _log_meal(user_id: str, inputs: dict) -> str:
         meal_type=inputs["meal_type"],
         date=inputs.get("date"),
     )
-    return f"Comida registrada correctamente (id: {sk})"
+    saved = storage.verify_meal_exists(user_id, sk)
+    if saved:
+        return f"Comida registrada y verificada en base de datos (id: {sk})"
+    return "ERROR: La comida no se pudo guardar en la base de datos. Inténtalo de nuevo."
 
 
 def _get_nutrition_summary(user_id: str, inputs: dict) -> str:
@@ -147,8 +150,12 @@ def _get_recent_meals(user_id: str, inputs: dict) -> str:
 
 
 def _delete_meal(user_id: str, inputs: dict) -> str:
-    storage.delete_meal(user_id, inputs["meal_id"])
-    return "Comida eliminada correctamente."
+    sk = inputs["meal_id"]
+    storage.delete_meal(user_id, sk)
+    still_exists = storage.verify_meal_exists(user_id, sk)
+    if not still_exists:
+        return f"Comida {sk[:16]}... eliminada y verificada."
+    return f"ERROR: No se pudo eliminar la comida {sk[:16]}... Inténtalo de nuevo."
 
 
 HANDLERS = {

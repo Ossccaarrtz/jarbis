@@ -100,6 +100,14 @@ def delete_expense(user_id: str, sk: str) -> None:
     )
 
 
+def verify_expense_exists(user_id: str, sk: str) -> bool:
+    response = _table("DYNAMODB_TABLE_EXPENSES").get_item(
+        Key={"user_id": user_id, "sk": sk},
+        ConsistentRead=True,
+    )
+    return "Item" in response
+
+
 # ---------------------------------------------------------------------------
 # Meals
 # ---------------------------------------------------------------------------
@@ -165,6 +173,14 @@ def delete_meal(user_id: str, sk: str) -> None:
     _table("DYNAMODB_TABLE_MEALS").delete_item(
         Key={"user_id": user_id, "sk": sk}
     )
+
+
+def verify_meal_exists(user_id: str, sk: str) -> bool:
+    response = _table("DYNAMODB_TABLE_MEALS").get_item(
+        Key={"user_id": user_id, "sk": sk},
+        ConsistentRead=True,
+    )
+    return "Item" in response
 
 
 # ---------------------------------------------------------------------------
