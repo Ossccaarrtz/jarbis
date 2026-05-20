@@ -153,8 +153,12 @@ def _update_calendar_event(user_id: str, inputs: dict) -> str:
 
 
 def _delete_calendar_event(user_id: str, inputs: dict) -> str:
-    google_calendar.delete_event(inputs["event_id"])
-    return "Evento eliminado correctamente."
+    event_id = inputs["event_id"]
+    google_calendar.delete_event(event_id)
+    still_exists = google_calendar.get_event(event_id)
+    if not still_exists:
+        return f"Evento {event_id[:16]}... eliminado y verificado en Google Calendar."
+    return f"ERROR: No se pudo eliminar el evento {event_id[:16]}... Inténtalo de nuevo."
 
 
 HANDLERS = {
