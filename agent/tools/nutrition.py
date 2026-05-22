@@ -1,6 +1,30 @@
 import json
 from collections import defaultdict
+from datetime import datetime, timezone, timedelta
 import storage
+
+_KST = timezone(timedelta(hours=9))
+_DEDUP_WINDOW_SEC = 120
+
+
+def _is_recent_duplicate_meal(user_id: str, description: str, calories: int,
+                              meal_type: str) -> dict | None:
+    recent = storage.get_recent_meals(user_id, limit=5)
+    now = datetime.now(_KST)
+    desc = (description or "").strip().lower()
+    mt = meal_type.lower()
+    for r in recent:
+        try:
+            ts = datetime.fromisoformat(r["id"][:19]).replace(tzinfo=_KST)
+        except ValueError:
+            continue
+        if (now - ts).total_seconds() > _DEDUP_WINDOW_SEC:
+            continue
+        if (r["description"].strip().lower() == desc
+                and int(r["calories"]) == int(calories)
+                and r["meal_type"].lower() == mt):
+            return r
+    return None
 
 DEFINITIONS = [
     {
@@ -149,6 +173,20 @@ DEFINITIONS = [
 
 
 def _log_meal(user_id: str, inputs: dict) -> str:
+    if not inputs.get("date"):
+        dup = _is_recent_duplicate_meal(
+            user_id,
+            description=inputs["description"],
+            calories=int(inputs["calories"]),
+            meal_type=inputs["meal_type"],
+        )
+        if dup:
+            return (
+                f"DUPLICADO: ya existe una comida idéntica hace <{_DEDUP_WINDOW_SEC}s "
+                f"(id: {dup['id']}, {dup['calories']} kcal {dup['meal_type']}). "
+                "No se creó otra. Si era intencional, pide al usuario que lo confirme."
+            )
+
     sk = storage.put_meal(
         user_id=user_id,
         description=inputs["description"],

@@ -42,21 +42,34 @@ def _system_prompt(user_id: str) -> str:
         lines = "\n".join(f"  - {k}: {v}" for k, v in prefs.items())
         prefs_text = f"\nPreferencias del usuario:\n{lines}\n"
 
-    return f"""Eres Jarbis, un asistente personal conversacional.
+    weekday_es = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"][now.weekday()]
+    return f"""You are Jarbis, a personal conversational assistant.
 
-Fecha y hora actual: {now.strftime("%Y-%m-%d %H:%M")} (KST, hora de Corea)
-Día de la semana: {["lunes","martes","miércoles","jueves","viernes","sábado","domingo"][now.weekday()]}
+Current date/time: {now.strftime("%Y-%m-%d %H:%M")} ({tz_name})
+Day of week: {weekday_es}
 {prefs_text}
-REGLA CRÍTICA: SIEMPRE llama las tools para leer o escribir datos. NUNCA asumas el estado actual basándote en el historial de conversación — llama la tool cada vez sin excepción.
-- Crear evento → DEBES llamar create_calendar_event
-- Modificar evento → DEBES llamar list_events para obtener el ID, luego update_calendar_event
-- Eliminar evento → DEBES llamar list_events para obtener el ID, luego delete_calendar_event
-- Ver gastos → DEBES llamar get_expense_summary
-Nunca confirmes haber ejecutado una acción sin haber llamado la tool correspondiente.
+LANGUAGE — match the user's language EXACTLY in every reply.
+- User writes English → reply English.
+- User writes Spanish → reply Spanish.
+- Never default to Spanish if the user wrote in another language.
 
-Cuando el usuario mencione gastos, comidas, eventos o recordatorios, usa las tools disponibles.
-Responde siempre en el mismo idioma que el usuario (normalmente español).
-Sé conciso y natural — eres un asistente personal, no un chatbot formal.
+CONVERSATION vs ACTION:
+- Greetings, thanks, clarifications, small talk → just chat. Do NOT call any tool.
+- Only call tools when the user actually asks to record / query / modify / delete data,
+  or when you need a real value (date, ID, current balance) that only a tool can give.
+
+ANTI-HALLUCINATION — CRITICAL:
+- Never claim you did something unless you called the corresponding tool in THIS turn and
+  it returned a success string. No "✅ done" without a real tool_result.
+- Quote the tool result text. Do NOT invent IDs, amounts, dates, calorie numbers or counts.
+- If a tool returns ERROR / "NO EXISTE" / "no se pudo", tell the user exactly that.
+  Never paper over a tool failure with an optimistic confirmation.
+- Do NOT re-execute a write you already did in a previous turn just because the user asked
+  "¿lo hiciste?" — instead call the matching get_* tool and report the actual state.
+- For destructive bulk operations (>3 items), list what you'll delete and ask for explicit
+  confirmation before calling delete_*_bulk.
+
+Be concise and natural — you're a personal assistant, not a formal chatbot.
 """
 
 
@@ -68,12 +81,7 @@ def run_agent(user_id: str, user_message: str) -> str:
     history = get_history(user_id)
     messages = history + [{"role": "user", "content": user_message}]
     tools_called = 0
-    tools_used = []
-    forced = False
-
-    # Tools que son solo de consulta (lookup), no de acción
-    LOOKUP_ONLY = {"list_events", "get_recent_expenses", "get_recent_meals",
-                   "get_expense_summary", "get_nutrition_summary"}
+    nudged = False
 
     while True:
         response = client.messages.create(
@@ -89,17 +97,29 @@ def run_agent(user_id: str, user_message: str) -> str:
                 (block.text for block in response.content if hasattr(block, "text")),
                 "Listo."
             )
-            # Si Claude solo llamó tools de consulta pero no ejecutó ninguna acción, forzar
-            only_lookups = tools_called > 0 and all(t in LOOKUP_ONLY for t in tools_used)
-            if (tools_called == 0 or only_lookups) and not forced:
-                reason = "sin tool_use" if tools_called == 0 else f"solo lookups ({tools_used})"
-                print(f"[WARNING] end_turn {reason} — forzando ejecución")
+            # Suave: si la respuesta luce como una confirmación pero no se llamó ninguna tool,
+            # recordamos una sola vez. NO forzamos cuando hubo lookups: una consulta puede
+            # ser la respuesta completa y correcta (y forzar escrituras ahí fue lo que
+            # corrompió datos antes).
+            looks_like_confirmation = (
+                "✓" in text or "✅" in text
+                or "listo" in text.lower() or "hecho" in text.lower()
+                or "registrado" in text.lower() or "guardado" in text.lower()
+                or "eliminad" in text.lower() or "actualizad" in text.lower()
+            )
+            if tools_called == 0 and looks_like_confirmation and not nudged:
+                print("[WARNING] confirmación sin tool_use — recordando una vez")
                 messages.append({"role": "assistant", "content": response.content})
                 messages.append({"role": "user", "content": [{
                     "type": "text",
-                    "text": "IMPORTANTE: Aún no completaste la acción. Debes llamar la tool de escritura/acción correspondiente ahora (no solo consultar)."
+                    "text": (
+                        "Tu respuesta afirma que ejecutaste una acción, pero no llamaste "
+                        "ninguna tool. Si la acción es real, llama la tool ahora. Si fue "
+                        "solo conversación (saludo, agradecimiento, aclaración), responde "
+                        "normal sin afirmar haber hecho nada."
+                    ),
                 }]})
-                forced = True
+                nudged = True
                 continue
             save_turn(user_id, user_message, text)
             return text
@@ -129,6 +149,8 @@ def run_agent(user_id: str, user_message: str) -> str:
                 })
 
             messages.append({"role": "user", "content": tool_results})
+            # Reset nudged: si ya llamó una tool, el ciclo de confirmación queda saldado.
+            nudged = False
             continue
 
         # stop_reason inesperado
