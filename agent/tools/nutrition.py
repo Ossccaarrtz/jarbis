@@ -155,7 +155,10 @@ DEFINITIONS = [
         "description": (
             "Elimina varias comidas de una sola vez y verifica cada eliminación. "
             "Úsala cuando el usuario quiera borrar múltiples comidas. "
-            "Primero llama get_nutrition_summary o get_recent_meals para obtener los IDs."
+            "Primero llama get_nutrition_summary o get_recent_meals para obtener los IDs. "
+            "Si vas a borrar MÁS de 3 comidas, primero muéstrale al usuario la lista "
+            "exacta y pídele confirmación explícita. Sólo entonces llama esta tool "
+            "con confirmed=true."
         ),
         "input_schema": {
             "type": "object",
@@ -164,6 +167,14 @@ DEFINITIONS = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Lista de IDs de comidas a eliminar",
+                },
+                "confirmed": {
+                    "type": "boolean",
+                    "description": (
+                        "Debe ser true solo si el usuario YA confirmó explícitamente "
+                        "la lista exacta en este turno. Requerido cuando meal_ids "
+                        "tiene más de 3 elementos."
+                    ),
                 },
             },
             "required": ["meal_ids"],
@@ -282,6 +293,15 @@ def _delete_meal(user_id: str, inputs: dict) -> str:
 def _delete_meals_bulk(user_id: str, inputs: dict) -> str:
     """Elimina múltiples comidas. Cuenta como éxito solo si el item existía y dejó de existir."""
     ids = inputs["meal_ids"]
+    confirmed = bool(inputs.get("confirmed", False))
+    if len(ids) > 3 and not confirmed:
+        preview = "\n".join(f"  - {sk}" for sk in ids[:10])
+        extra = f"\n  ... y {len(ids) - 10} más" if len(ids) > 10 else ""
+        return (
+            f"CONFIRMACIÓN REQUERIDA: vas a borrar {len(ids)} comidas.\n{preview}{extra}\n"
+            "Muestra esta lista al usuario y pide confirmación explícita. "
+            "Solo entonces vuelve a llamar delete_meals_bulk con confirmed=true."
+        )
     results = []
     ok = 0
     for sk in ids:

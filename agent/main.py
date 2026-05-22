@@ -41,7 +41,10 @@ def process_update(update: dict) -> None:
     print(f"[IN]  {text}")
 
     telegram.send_typing(chat_id)
-    response = run_agent(user_id, text)
+    response, tools_used = run_agent(user_id, text)
+
+    if tools_used:
+        response = response + "\n\n🔧 " + " · ".join(tools_used)
 
     print(f"[OUT] {response}")
     telegram.send_message(chat_id, response)

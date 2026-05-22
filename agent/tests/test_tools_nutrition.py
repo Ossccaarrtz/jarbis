@@ -114,3 +114,21 @@ def test_update_meal_fails_for_nonexistent_id(aws, user_id):
     result = tn._update_meal(user_id, {"meal_id": "ghost", "calories": 100})
     assert "ERROR" in result
     assert "no existe" in result.lower()
+
+
+def test_delete_meals_bulk_requires_confirmation_over_3(aws, user_id):
+    tn = _reload_tools_nutrition()
+    sks = [aws.put_meal(user_id, f"m{i}", 100, "snack") for i in range(5)]
+    result = tn._delete_meals_bulk(user_id, {"meal_ids": sks})
+    assert "CONFIRMACIÓN REQUERIDA" in result
+    for sk in sks:
+        assert aws.verify_meal_exists(user_id, sk) is True
+
+
+def test_delete_meals_bulk_proceeds_with_confirmed_true(aws, user_id):
+    tn = _reload_tools_nutrition()
+    sks = [aws.put_meal(user_id, f"m{i}", 100, "snack") for i in range(5)]
+    result = tn._delete_meals_bulk(user_id, {"meal_ids": sks, "confirmed": True})
+    assert "5/5" in result
+    for sk in sks:
+        assert aws.verify_meal_exists(user_id, sk) is False

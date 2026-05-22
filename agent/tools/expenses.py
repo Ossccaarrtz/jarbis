@@ -167,7 +167,10 @@ DEFINITIONS = [
         "description": (
             "Elimina varios gastos de una sola vez y verifica cada eliminación. "
             "Úsala cuando el usuario quiera borrar múltiples gastos. "
-            "Primero llama get_expense_summary para obtener los IDs."
+            "Primero llama get_expense_summary para obtener los IDs. "
+            "Si vas a borrar MÁS de 3 gastos, primero muéstrale al usuario la lista "
+            "exacta y pídele confirmación explícita. Sólo entonces llama esta tool "
+            "con confirmed=true."
         ),
         "input_schema": {
             "type": "object",
@@ -176,6 +179,14 @@ DEFINITIONS = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Lista de IDs de gastos a eliminar",
+                },
+                "confirmed": {
+                    "type": "boolean",
+                    "description": (
+                        "Debe ser true solo si el usuario YA confirmó explícitamente "
+                        "la lista exacta en este turno. Requerido cuando expense_ids "
+                        "tiene más de 3 elementos."
+                    ),
                 },
             },
             "required": ["expense_ids"],
@@ -299,6 +310,15 @@ def _delete_expense(user_id: str, inputs: dict) -> str:
 def _delete_expenses_bulk(user_id: str, inputs: dict) -> str:
     """Elimina múltiples gastos. Cuenta como éxito solo si el item existía y dejó de existir."""
     ids = inputs["expense_ids"]
+    confirmed = bool(inputs.get("confirmed", False))
+    if len(ids) > 3 and not confirmed:
+        preview = "\n".join(f"  - {sk}" for sk in ids[:10])
+        extra = f"\n  ... y {len(ids) - 10} más" if len(ids) > 10 else ""
+        return (
+            f"CONFIRMACIÓN REQUERIDA: vas a borrar {len(ids)} gastos.\n{preview}{extra}\n"
+            "Muestra esta lista al usuario y pide confirmación explícita. "
+            "Solo entonces vuelve a llamar delete_expenses_bulk con confirmed=true."
+        )
     results = []
     ok = 0
     for sk in ids:

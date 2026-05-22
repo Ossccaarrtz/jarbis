@@ -17,6 +17,7 @@ os.environ.setdefault("DYNAMODB_TABLE_MEALS", "jarbis-meals-test")
 os.environ.setdefault("DYNAMODB_TABLE_REMINDERS", "jarbis-reminders-test")
 os.environ.setdefault("DYNAMODB_TABLE_PREFERENCES", "jarbis-preferences-test")
 os.environ.setdefault("DYNAMODB_TABLE_CONVERSATIONS", "jarbis-conversations-test")
+os.environ.setdefault("TELEGRAM_BOT_TOKEN", "test-bot-token")
 
 USER_ID = "test-user"
 

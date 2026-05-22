@@ -155,3 +155,24 @@ def test_update_expense_fails_for_nonexistent_id(aws, user_id):
     result = te._update_expense(user_id, {"expense_id": "ghost", "amount": 99})
     assert "ERROR" in result
     assert "no existe" in result.lower()
+
+
+def test_delete_expenses_bulk_requires_confirmation_over_3(aws, user_id):
+    """Más de 3 ids sin confirmed=true debe devolver CONFIRMACIÓN REQUERIDA y NO borrar nada."""
+    te = _reload_tools_expenses()
+    sks = [aws.put_expense(user_id, 10, "comida", f"x{i}", "USD") for i in range(5)]
+    result = te._delete_expenses_bulk(user_id, {"expense_ids": sks})
+    assert "CONFIRMACIÓN REQUERIDA" in result
+    assert "5" in result
+    # Ninguno debe haberse borrado
+    for sk in sks:
+        assert aws.verify_expense_exists(user_id, sk) is True
+
+
+def test_delete_expenses_bulk_proceeds_with_confirmed_true(aws, user_id):
+    te = _reload_tools_expenses()
+    sks = [aws.put_expense(user_id, 10, "comida", f"x{i}", "USD") for i in range(5)]
+    result = te._delete_expenses_bulk(user_id, {"expense_ids": sks, "confirmed": True})
+    assert "5/5" in result
+    for sk in sks:
+        assert aws.verify_expense_exists(user_id, sk) is False

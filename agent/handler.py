@@ -6,6 +6,7 @@ Responde 200 inmediatamente y delega el procesamiento a Lambda B (async).
 import json
 import os
 import boto3
+import telegram
 
 lambda_client = boto3.client("lambda", region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
@@ -33,6 +34,9 @@ def lambda_handler(event, context):
 
     if chat_id != AUTHORIZED_CHAT_ID or not text:
         return _OK
+
+    # Typing inmediato — visible mientras Lambda B arranca (~1-3s).
+    telegram.send_typing(chat_id)
 
     # Invocar Lambda B de forma async (InvocationType=Event = fire and forget)
     try:

@@ -29,13 +29,13 @@ def send_message(chat_id: int | str, text: str) -> None:
 
 
 def send_typing(chat_id: int | str) -> None:
-    """Muestra el indicador 'escribiendo...' en Telegram."""
+    """Muestra el indicador 'escribiendo...' en Telegram. Best-effort, nunca rompe el flujo."""
     try:
         requests.post(_url("sendChatAction"), json={
             "chat_id": chat_id,
             "action": "typing",
         }, timeout=5)
-    except requests.exceptions.RequestException:
+    except Exception:
         pass  # Non-critical, ignore silently
 
 

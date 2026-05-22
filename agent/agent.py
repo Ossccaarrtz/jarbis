@@ -5,6 +5,7 @@ from conversation import get_history, save_turn
 from tools import TOOLS, execute_tool
 import storage
 import google_calendar
+import telegram
 
 # Timezones reconocidos por nombre coloquial → IANA
 TIMEZONE_ALIASES = {
@@ -73,17 +74,27 @@ Be concise and natural — you're a personal assistant, not a formal chatbot.
 """
 
 
-def run_agent(user_id: str, user_message: str) -> str:
+def run_agent(user_id: str, user_message: str) -> tuple[str, list[str]]:
     """
     Ejecuta el loop agentic completo para un mensaje dado.
-    Retorna el texto de respuesta final.
+    Retorna (texto_respuesta, lista_de_tools_ejecutadas).
     """
     history = get_history(user_id)
     messages = history + [{"role": "user", "content": user_message}]
     tools_called = 0
+    tools_used: list[str] = []
     nudged = False
 
+    # chat_id == user_id como string para el caso de Telegram.
+    try:
+        chat_id_int = int(user_id)
+    except (TypeError, ValueError):
+        chat_id_int = None
+
     while True:
+        if chat_id_int is not None:
+            telegram.send_typing(chat_id_int)
+
         response = client.messages.create(
             model=MODEL,
             max_tokens=1024,
@@ -122,7 +133,7 @@ def run_agent(user_id: str, user_message: str) -> str:
                 nudged = True
                 continue
             save_turn(user_id, user_message, text)
-            return text
+            return text, tools_used
 
         if response.stop_reason == "tool_use":
             tools_called += 1
@@ -156,4 +167,4 @@ def run_agent(user_id: str, user_message: str) -> str:
         # stop_reason inesperado
         break
 
-    return "No pude procesar tu mensaje. Intenta de nuevo."
+    return "No pude procesar tu mensaje. Intenta de nuevo.", tools_used
